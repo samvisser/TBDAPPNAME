@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+}
+
+/* Custom scrollbar for better UX */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Loading animation */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Prose styles for markdown content */
+.prose {
+  color: #374151;
+  max-width: none;
+}
+
+.prose h1 {
+  color: #111827;
+  font-weight: 800;
+  font-size: 1.5rem;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.prose h2 {
+  color: #1f2937;
+  font-weight: 700;
+  font-size: 1.25rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose h3 {
+  color: #374151;
+  font-weight: 600;
+  font-size: 1.125rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose p {
+  margin-bottom: 0.75rem;
+  line-height: 1.625;
+}
+
+.prose li {
+  margin-bottom: 0.25rem;
+}
+
+.prose strong {
+  color: #111827;
+  font-weight: 600;
+}
+
+/* Custom button styles */
+.btn-primary {
+  @apply bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors;
+}
+
+.btn-secondary {
+  @apply bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-colors;
+}
+
+.btn-success {
+  @apply bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors;
+}
+
+/* Card styles */
+.card {
+  @apply bg-white rounded-lg shadow-lg overflow-hidden;
+}
+
+.card-header {
+  @apply px-6 py-4 border-b bg-gray-50;
+}
+
+.card-body {
+  @apply p-6;
+}
+
+/* Status indicator styles */
+.status-step {
+  @apply w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium;
+}
+
+.status-step.active {
+  @apply bg-blue-500 text-white;
+}
+
+.status-step.completed {
+  @apply bg-green-500 text-white;
+}
+
+.status-step.inactive {
+  @apply bg-gray-200 text-gray-500;
+} 
