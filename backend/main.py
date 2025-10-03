@@ -1,176 +1,116 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-import os
-import uuid
+from pydantic import BaseModel
 import asyncio
-from pathlib import Path
-import shutil
-from typing import Optional
+import time
+import logging
 
-from services.audio_processor import AudioProcessor
-from services.summary_generator import SummaryGenerator
-from services.pdf_generator import PDFGenerator
-from models.processing_models import ProcessingStatus, ProcessingResult
+from config import API_HOST, API_PORT, API_RELOAD
+from services.gemini_service import GeminiService
 
-app = FastAPI(title="CS300 Lecture Processor", version="1.0.0")
+# Configure logging
+class InfoFilter(logging.Filter):
+    def filter(self, record):
+        # Filter out AFC and other initialization messages
+        return not record.getMessage().startswith('AFC')
+
+# Create logger
+logger = logging.getLogger('gemini_api')
+logger.setLevel(logging.INFO)
+
+# Create handlers
+file_handler = logging.FileHandler('gemini_api.log')
+console_handler = logging.StreamHandler()
+
+# Create formatter
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+# Add filter to both handlers
+info_filter = InfoFilter()
+file_handler.addFilter(info_filter)
+console_handler.addFilter(info_filter)
+
+# Add handlers to logger
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+
+# Initialize Gemini service
+gemini_service = GeminiService()
+
+app = FastAPI()
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Create necessary directories
-UPLOAD_DIR = Path("uploads")
-OUTPUT_DIR = Path("outputs")
-UPLOAD_DIR.mkdir(exist_ok=True)
-OUTPUT_DIR.mkdir(exist_ok=True)
+class TranscriptInput(BaseModel):
+    text: str
+    is_audio_transcript: bool = False
 
-# Initialize services
-audio_processor = AudioProcessor()
-summary_generator = SummaryGenerator()
-pdf_generator = PDFGenerator()
+class SimpleQuestion(BaseModel):
+    question: str
 
-# Store processing status
-processing_jobs = {}
+# Quick test endpoint for Gemini
+@app.post("/api/quick-test")
+async def quick_test(data: SimpleQuestion):
+    try:
+        # Simple test using the gemini service
+        result = await gemini_service.process_text(data.question)
+        return {"result": result["summary"]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/upload-audio")
-async def upload_audio(file: UploadFile = File(...)):
-    """Upload audio file and start processing"""
+async def process_with_gemini(text: str) -> dict:
+    """
+    Process text using the Gemini service.
     
-    # Validate file type
-    if not file.filename.lower().endswith(('.mp3', '.wav', '.m4a', '.mp4', '.avi', '.mov')):
-        raise HTTPException(status_code=400, detail="Unsupported file format")
-    
-    # Generate unique job ID
-    job_id = str(uuid.uuid4())
-    
-    # Save uploaded file
-    file_path = UPLOAD_DIR / f"{job_id}_{file.filename}"
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
-    # Initialize processing status
-    processing_jobs[job_id] = ProcessingStatus(
-        job_id=job_id,
-        filename=file.filename,
-        status="uploaded",
-        progress=0
-    )
-    
-    # Start background processing
-    asyncio.create_task(process_audio_file(job_id, file_path))
-    
-    return {"job_id": job_id, "message": "File uploaded successfully"}
+    Args:
+        text: The text to process
+        
+    Returns:
+        Dict containing 'summary' and 'insights' keys
+    """
+    try:
+        logger.info("Starting text processing with Gemini service")
+        result = await gemini_service.process_text(text)
+        logger.info(f"Processing completed: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in process_with_gemini: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error: {str(e)}"
+        )
 
-@app.get("/api/status/{job_id}")
-async def get_processing_status(job_id: str):
-    """Get processing status for a job"""
-    if job_id not in processing_jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    return processing_jobs[job_id]
+# Simple test endpoint
+@app.get("/api/test")
+async def test_endpoint():
+    return {"message": "Backend is working!", "status": "success"}
 
-@app.get("/api/download/{job_id}")
-async def download_result(job_id: str):
-    """Download the processed PDF result"""
-    if job_id not in processing_jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    status = processing_jobs[job_id]
-    if status.status != "completed":
-        raise HTTPException(status_code=400, detail="Processing not completed")
-    
-    pdf_path = OUTPUT_DIR / f"{job_id}_result.pdf"
-    if not pdf_path.exists():
-        raise HTTPException(status_code=404, detail="Result file not found")
-    
-    return FileResponse(
-        path=pdf_path,
-        filename=f"lecture_summary_{status.filename}.pdf",
-        media_type="application/pdf"
-    )
-
-@app.get("/api/sample-result")
-async def get_sample_result():
-    """Get sample processing result for demo purposes"""
+# Test endpoint that accepts POST data
+@app.post("/api/test-post")
+async def test_post(data: dict):
     return {
-        "summary": """
-        # Lecture Summary: Introduction to Data Structures
-
-        ## Key Topics Covered
-        - Arrays and their time complexities
-        - Linked Lists implementation
-        - Stack and Queue operations
-        - Basic sorting algorithms
-
-        ## Main Points
-        1. **Arrays**: Fixed size, O(1) access time, but O(n) insertion/deletion
-        2. **Linked Lists**: Dynamic size, O(n) access time, but O(1) insertion/deletion at known positions
-        3. **Stacks**: LIFO principle, used in function calls and expression evaluation
-        4. **Queues**: FIFO principle, used in scheduling and breadth-first search
-
-        ## Important Definitions
-        - **Time Complexity**: Measure of algorithm efficiency in terms of time
-        - **Space Complexity**: Measure of memory usage by an algorithm
-        - **Big O Notation**: Mathematical notation to describe algorithm complexity
-        """,
-        "insights": [
-            "Students showed confusion about pointer arithmetic - recommend additional practice problems",
-            "The concept of time complexity was well understood by most students",
-            "Queue implementation questions were asked frequently - consider more examples",
-            "Memory management concepts need reinforcement in next lecture",
-            "Students are ready to move on to more advanced data structures like trees"
-        ]
+        "message": "Received your data!",
+        "received_data": data,
+        "status": "success"
     }
 
-async def process_audio_file(job_id: str, file_path: Path):
-    """Background task to process audio file"""
+@app.post("/api/process-transcript")
+async def process_transcript(input_data: TranscriptInput):
     try:
-        # Update status: transcribing
-        processing_jobs[job_id].status = "transcribing"
-        processing_jobs[job_id].progress = 10
-        
-        # Transcribe audio
-        transcript = await audio_processor.transcribe(file_path)
-        processing_jobs[job_id].progress = 40
-        
-        # Generate summary
-        processing_jobs[job_id].status = "summarizing"
-        summary = await summary_generator.generate_summary(transcript)
-        processing_jobs[job_id].progress = 70
-        
-        # Extract insights
-        insights = await summary_generator.extract_insights(transcript)
-        processing_jobs[job_id].progress = 85
-        
-        # Generate PDF
-        processing_jobs[job_id].status = "generating_pdf"
-        pdf_path = OUTPUT_DIR / f"{job_id}_result.pdf"
-        await pdf_generator.create_pdf(summary, insights, pdf_path)
-        
-        # Update status: completed
-        processing_jobs[job_id].status = "completed"
-        processing_jobs[job_id].progress = 100
-        processing_jobs[job_id].result = ProcessingResult(
-            summary=summary,
-            insights=insights,
-            pdf_path=str(pdf_path)
-        )
-        
+        result = await process_with_gemini(input_data.text)
+        return result
     except Exception as e:
-        processing_jobs[job_id].status = "error"
-        processing_jobs[job_id].error_message = str(e)
-    
-    finally:
-        # Clean up uploaded file
-        if file_path.exists():
-            file_path.unlink()
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    uvicorn.run(app, host=API_HOST, port=API_PORT, reload=API_RELOAD) 

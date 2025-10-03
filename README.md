@@ -32,44 +32,97 @@ An automated educational analysis tool that transforms lecture recordings into c
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 16+ and npm
-- Python 3.8+ and pip
-- API keys for AI services (optional for demo)
+- **Node.js 16+** and npm (for frontend)
+- **Python 3.8+** and pip (for backend)
+- **Google API Key** (for Gemini AI processing)
 
-### Frontend Setup
+### 📦 Complete Setup Process
+
+#### Step 1: Clone and Navigate
 ```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm start
+git clone <your-repo-url>
+cd TBDAPPNAME
 ```
 
+#### Step 2: Frontend Setup
+```bash
+# Install frontend dependencies
+npm install
+
+# Start frontend development server
+npm start
+```
 The frontend will be available at `http://localhost:3000`
 
-### Backend Setup
+#### Step 3: Backend Setup
 ```bash
 # Navigate to backend directory
 cd backend
 
+# Run automated setup script
+python setup.py
+```
+
+The setup script will:
+- ✅ Create Python virtual environment (`venv/`)
+- ✅ Install all required dependencies
+- ✅ Create `.env` file template
+- ✅ Set up proper project structure
+
+#### Step 4: Configure API Key
+```bash
+# Edit the .env file and add your Google API key
+nano .env  # or use your preferred editor
+```
+
+Add your Google API key:
+```
+GOOGLE_API_KEY=your_actual_google_api_key_here
+```
+
+#### Step 5: Start Backend Server
+```bash
+# Activate virtual environment
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Start the backend server
+python main.py
+```
+
+The backend API will be available at `http://localhost:8000`
+
+### 🎯 Ready to Use!
+- **Frontend**: `http://localhost:3000`
+- **Backend API**: `http://localhost:8000`
+- **API Documentation**: `http://localhost:8000/docs` (FastAPI auto-generated docs)
+
+### 🔧 Manual Setup (Alternative)
+If you prefer manual setup instead of using the setup script:
+
+```bash
+cd backend
+
 # Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Activate virtual environment
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Copy environment template
-cp .env.example .env
+# Create .env file
+echo "GOOGLE_API_KEY=your_google_api_key_here" > .env
 
-# Edit .env with your API keys (optional for demo)
-# The app works with mock data if no API keys are provided
-
-# Start the server
+# Start server
 python main.py
 ```
 
-The backend API will be available at `http://localhost:4321`
+### ⚠️ Important Notes
+- **Virtual environment is excluded** from version control (`.gitignore`)
+- **Each developer** must run `python setup.py` to create their own environment
+- **API key is required** for text processing functionality
+- **Both servers** (frontend and backend) must be running for full functionality
 
 ## 🔧 Configuration
 
@@ -198,13 +251,61 @@ The generated PDF includes:
 
 This project is licensed under the MIT License.
 
-## 🆘 Support
+## 🆘 Support & Troubleshooting
 
-For questions or issues:
-1. Check the sample results for expected output
-2. Verify your environment variables
-3. Ensure all dependencies are installed
-4. Review the console for error messages
+### Common Setup Issues
+
+#### ❌ "python: command not found"
+```bash
+# Try using python3 instead
+python3 setup.py
+python3 main.py
+```
+
+#### ❌ "No module named uvicorn"
+```bash
+# Make sure you're in the virtual environment
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+```
+
+#### ❌ "GOOGLE_API_KEY not found"
+```bash
+# Make sure .env file exists in backend directory
+cd backend
+ls -la .env  # Should show the file
+# Edit .env and add your API key
+```
+
+#### ❌ "Failed to fetch" in frontend
+```bash
+# Make sure backend is running
+cd backend
+source venv/bin/activate
+python main.py
+# Should show "Uvicorn running on http://0.0.0.0:8000"
+```
+
+#### ❌ "Permission denied" on setup.py
+```bash
+# Make the script executable
+chmod +x setup.py
+python setup.py
+```
+
+### Getting Help
+
+1. **Check logs**: Look at console output for error messages
+2. **Verify setup**: Ensure both frontend (port 3000) and backend (port 8000) are running
+3. **Test API**: Visit `http://localhost:8000/docs` to see API documentation
+4. **Check environment**: Make sure you're in the virtual environment when running backend
+
+### Debug Steps
+1. Run `python setup.py` and check for any errors
+2. Verify `.env` file exists and has your API key
+3. Test backend with: `curl http://localhost:8000/api/test`
+4. Check browser console for frontend errors
+5. Review backend logs in terminal
 
 ## 🚀 Deployment
 
