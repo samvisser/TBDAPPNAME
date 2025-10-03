@@ -45,30 +45,54 @@ function App() {
   };
 
   const handleTextSubmit = async (text: string) => {
+    console.log('Starting text submission...');
     setIsProcessing(true);
     try {
+      console.log('Sending request to backend...');
+      const requestBody = {
+        text,
+        is_audio_transcript: false,
+      };
+      console.log('Request body:', requestBody);
+
       const response = await fetch('http://localhost:8000/api/process-transcript', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
-        body: JSON.stringify({
-          text,
-          is_audio_transcript: false,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
       if (!response.ok) {
-        throw new Error('Failed to process transcript');
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`Failed to process transcript: ${response.status} ${errorText}`);
       }
 
       const result = await response.json();
       console.log('API Response:', result);
+      
+      // Check if result has the expected structure
+      if (!result.summary && !result.insights) {
+        console.error('Unexpected API response structure:', result);
+        throw new Error('Invalid API response format');
+      }
+      
       setProcessingResult(result);
-    } catch (error) {
+    } catch (err: any) {
+      const error = err as Error;
       console.error('Error processing transcript:', error);
+      console.error('Full error details:', {
+        message: error?.message || 'Unknown error',
+        stack: error?.stack || '',
+        response: (error as any)?.response || null
+      });
       setProcessingResult({
-        summary: "Error processing text. Please try again.",
+        summary: `Error: ${error?.message || 'Failed to process text'}`,
         insights: []
       });
     } finally {
@@ -97,6 +121,23 @@ function App() {
                   className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 shadow-lg"
                 >
                   View Sample Results
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      console.log('Testing backend connection...');
+                      const response = await fetch('http://localhost:8000/api/test');
+                      const data = await response.json();
+                      console.log('Backend test response:', data);
+                      alert('Backend is connected! Response: ' + JSON.stringify(data));
+                    } catch (err) {
+                      console.error('Backend test error:', err);
+                      alert('Failed to connect to backend. Check console for details.');
+                    }
+                  }}
+                  className="bg-slate-700 hover:bg-slate-600 text-white px-8 py-4 rounded-xl font-medium transition-all duration-300"
+                >
+                  Test Backend Connection
                 </button>
               </div>
             </div>
